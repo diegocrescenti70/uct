@@ -533,3 +533,164 @@ div#personHeader {
 .MYFONT{
   font-size:12px !important;
 }
+
+/* === AVATAR UPLOAD STYLES === */
+.avatar-upload-section {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.avatar-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.avatar-preview-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.avatar-preview .icon-large {
+  width: 24px;
+  height: 24px;
+  color: var(--muted);
+}
+
+.avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.preview-text {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.avatar-controls {
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.upload-area {
+  border: 2px dashed var(--muted);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--surface-1);
+}
+
+.upload-area:hover {
+  border-color: var(--gold);
+  background: var(--surface-2);
+}
+
+.upload-area.drag-over {
+  border-color: var(--gold);
+  background: var(--surface-2);
+  transform: scale(1.02);
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-content .icon {
+  width: 24px;
+  height: 24px;
+  color: var(--muted);
+}
+
+.upload-content span {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.upload-content small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.crop-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--surface-1);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+.crop-section canvas {
+  border: 1px solid var(--muted);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.crop-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.avatar-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 14px;
+  height: auto;
+}
+
+.btn-sm .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Responsive avatar upload */
+@media (max-width: 640px) {
+  .avatar-upload-section {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .avatar-controls {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .upload-area {
+    padding: 16px;
+  }
+}

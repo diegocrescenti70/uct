@@ -56,6 +56,7 @@ const signUpBtn = qs("#signUpBtn");
 const authForm = qs("#authForm");
 
 let CURRENT_USER = null;
+let CURRENT_PROFILE = null; // Profilo utente dalla tabella profiles
 let CURRENT_PERSON = null;
 let CATEGORIES = [];
 let EDITING_PERSON = null; // Per gestire la modifica
@@ -85,10 +86,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     data: { session },
   } = await supabase.auth.getSession();
   CURRENT_USER = session?.user || null;
+  
+  if (CURRENT_USER) {
+    // Carica il profilo utente se già autenticato
+    CURRENT_PROFILE = await loadUserProfile();
+  }
+  
   bindAuthUI();
 
-  supabase.auth.onAuthStateChange((_ev, s) => {
+  supabase.auth.onAuthStateChange(async (_ev, s) => {
     CURRENT_USER = s?.user || null;
+    
+    if (CURRENT_USER) {
+      // Carica il profilo utente quando si autentica
+      CURRENT_PROFILE = await loadUserProfile();
+    } else {
+      CURRENT_PROFILE = null;
+    }
+    
     bindAuthUI();
   });
 
@@ -326,10 +341,11 @@ function bindAuthUI() {
     setUserMenu(false);
   } else {
     userMenu?.classList.remove("hidden");
-    const email = CURRENT_USER.email || "";
-    const initials = getInitialsFromEmail(email);
-    userAvatarInitials.textContent = initials;
-    userAvatarBtn.title = email; // tooltip con email completa (non visibile nel menu)
+    
+    // Aggiorna l'interfaccia avatar utilizzando il profilo
+    updateAvatarUI();
+    updateNicknameInDropdown();
+    
     ensureDefaultCategories().then(() => {
       loadPeople();
       showView("home");
@@ -1023,11 +1039,14 @@ function openProfileModal() {
   const createdAtInput = profileForm.querySelector('[name="created_at"]');
   
   if (emailInput) emailInput.value = CURRENT_USER.email || '';
-  if (displayNameInput) displayNameInput.value = CURRENT_USER.user_metadata?.display_name || '';
+  if (displayNameInput) displayNameInput.value = CURRENT_PROFILE?.display_name || '';
   if (createdAtInput) {
     const date = new Date(CURRENT_USER.created_at);
     createdAtInput.value = date.toLocaleDateString('it-IT');
   }
+  
+  // Carica l'avatar preview se presente
+  updateAvatarPreview();
   
   // Resetta i campi password
   const currentPasswordInput = profileForm.querySelector('[name="current_password"]');
@@ -1040,6 +1059,10 @@ function openProfileModal() {
   
   profileModal.showModal();
   setUserMenu(false); // Chiude il menu utente
+  
+  // Inizializza i gestori degli eventi per l'avatar
+  initializeAvatarHandlers();
+  
   try {
     lucide.createIcons();
   } catch {}
@@ -1052,19 +1075,20 @@ profileForm?.addEventListener("submit", async (e) => {
   const displayName = fd.get("display_name")?.toString().trim();
   
   if (!displayName) {
-    toast("Il nome visualizzazione è obbligatorio");
+    toast("Il nickname è obbligatorio");
     return;
   }
   
   try {
-    const { error } = await supabase.auth.updateUser({
-      data: { display_name: displayName }
+    // Aggiorna il profilo nella tabella profiles
+    const updatedProfile = await updateUserProfile({
+      display_name: displayName
     });
     
-    if (error) {
-      toast("Errore durante l'aggiornamento del profilo");
-      console.error(error);
-      return;
+    if (updatedProfile) {
+      CURRENT_PROFILE = updatedProfile;
+      updateAvatarUI();
+      updateNicknameInDropdown();
     }
     
     profileModal.close();
@@ -1164,6 +1188,439 @@ async function onResetPassword() {
   } catch (error) {
     console.error("Errore imprevisto:", error);
     toast("Errore imprevisto durante l'invio email");
+  }
+}
+
+// === PROFILE MANAGEMENT ===
+async function loadUserProfile() {
+  if (!CURRENT_USER) return null;
+  
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", CURRENT_USER.id)
+    .single();
+    
+  if (error && error.code !== "PGRST116") {
+    console.error("Error loading profile:", error);
+    return null;
+  }
+  
+  // Se non esiste un profilo, ne creiamo uno di default
+  if (!data) {
+    return await createUserProfile();
+  }
+  
+  return data;
+}
+
+async function createUserProfile() {
+  if (!CURRENT_USER) return null;
+  
+  const defaultDisplayName = CURRENT_USER.email?.split("@")[0] || "User";
+  
+  const { data, error } = await supabase
+    .from("profiles")
+    .insert({
+      id: CURRENT_USER.id,
+      display_name: defaultDisplayName,
+      avatar_url: null
+    })
+    .select()
+    .single();
+    
+  if (error) {
+    console.error("Error creating profile:", error);
+    return null;
+  }
+  
+  return data;
+}
+
+async function updateUserProfile(updates) {
+  if (!CURRENT_USER) return null;
+  
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", CURRENT_USER.id)
+    .select()
+    .single();
+    
+  if (error) {
+    console.error("Error updating profile:", error);
+    throw error;
+  }
+  
+  return data;
+}
+
+async function uploadAvatar(file) {
+  if (!CURRENT_USER || !file) return null;
+  
+  // Validazione del file
+  if (!file.type.includes("image/png")) {
+    throw new Error("Solo file PNG sono supportati");
+  }
+  
+  // Ridimensiona l'immagine a 36x36 se necessario
+  const resizedFile = await resizeImage(file, 36, 36);
+  
+  const fileExt = "png";
+  const filePath = `${CURRENT_USER.id}/avatar.${fileExt}`;
+  
+  const { data, error } = await supabase.storage
+    .from("avatars")
+    .upload(filePath, resizedFile, {
+      cacheControl: "3600",
+      upsert: true
+    });
+    
+  if (error) {
+    console.error("Error uploading avatar:", error);
+    throw error;
+  }
+  
+  // Ottieni l'URL pubblico dell'avatar
+  const { data: urlData } = supabase.storage
+    .from("avatars")
+    .getPublicUrl(filePath);
+    
+  return urlData.publicUrl;
+}
+
+async function resizeImage(file, maxWidth, maxHeight) {
+  return new Promise((resolve) => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    
+    img.onload = () => {
+      // Calcola le nuove dimensioni mantenendo l'aspect ratio
+      let { width, height } = img;
+      
+      if (width > height) {
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = (width * maxHeight) / height;
+          height = maxHeight;
+        }
+      }
+      
+      canvas.width = maxWidth;
+      canvas.height = maxHeight;
+      
+      // Centra l'immagine nel canvas 36x36
+      const offsetX = (maxWidth - width) / 2;
+      const offsetY = (maxHeight - height) / 2;
+      
+      // Sfondo trasparente
+      ctx.clearRect(0, 0, maxWidth, maxHeight);
+      
+      // Disegna l'immagine ridimensionata
+      ctx.drawImage(img, offsetX, offsetY, width, height);
+      
+      canvas.toBlob(resolve, "image/png");
+    };
+    
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function updateAvatarUI() {
+  const avatar = qs("#userAvatarBtn");
+  const initials = qs("#userAvatarInitials");
+  
+  if (!avatar || !initials) return;
+  
+  if (CURRENT_PROFILE?.avatar_url) {
+    // Mostra l'immagine avatar
+    initials.style.display = "none";
+    avatar.style.backgroundImage = `url(${CURRENT_PROFILE.avatar_url}?v=${Date.now()})`;
+    avatar.style.backgroundSize = "cover";
+    avatar.style.backgroundPosition = "center";
+    avatar.style.backgroundRepeat = "no-repeat";
+  } else {
+    // Mostra le iniziali
+    initials.style.display = "block";
+    avatar.style.backgroundImage = "none";
+    const displayName = CURRENT_PROFILE?.display_name || CURRENT_USER?.email || "User";
+    initials.textContent = getInitialsFromDisplayName(displayName);
+  }
+  
+  // Aggiorna il tooltip
+  avatar.title = CURRENT_PROFILE?.display_name || CURRENT_USER?.email || "User";
+}
+
+function getInitialsFromDisplayName(displayName) {
+  if (!displayName) return "U";
+  
+  // Se contiene spazi, usa le prime lettere delle parole
+  const words = displayName.trim().split(/\s+/);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  
+  // Altrimenti usa i primi due caratteri
+  return displayName.substring(0, 2).toUpperCase();
+}
+
+function updateNicknameInDropdown() {
+  const dropdown = qs("#userDropdown");
+  if (!dropdown || !CURRENT_PROFILE?.display_name) return;
+  
+  // Rimuovi nickname esistente se presente
+  const existingNickname = dropdown.querySelector(".dropdown__nickname");
+  if (existingNickname) {
+    existingNickname.remove();
+  }
+  
+  // Aggiungi il nickname come primo elemento
+  const nicknameElement = document.createElement("div");
+  nicknameElement.className = "dropdown__nickname";
+  nicknameElement.style.cssText = `
+    text-align: center;
+    font-weight: 600;
+    padding: 8px 12px;
+    color: var(--gold);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    margin-bottom: 4px;
+  `;
+  nicknameElement.textContent = CURRENT_PROFILE.display_name;
+  
+  // Inserisci come primo elemento
+  dropdown.insertBefore(nicknameElement, dropdown.firstChild);
+}
+
+// === AVATAR MANAGEMENT ===
+function updateAvatarPreview() {
+  const avatarPreview = qs("#avatarPreview");
+  const avatarPreviewContent = qs("#avatarPreviewContent");
+  
+  if (!avatarPreview || !avatarPreviewContent) return;
+  
+  if (CURRENT_PROFILE?.avatar_url) {
+    // Mostra l'immagine avatar
+    avatarPreviewContent.innerHTML = `<img src="${CURRENT_PROFILE.avatar_url}?v=${Date.now()}" alt="Avatar" />`;
+  } else {
+    // Mostra placeholder
+    avatarPreviewContent.innerHTML = `
+      <svg data-lucide="user" class="icon-large"></svg>
+      <span class="preview-text">Nessun avatar</span>
+    `;
+  }
+  
+  try {
+    lucide.createIcons();
+  } catch {}
+}
+
+function initializeAvatarHandlers() {
+  const uploadArea = qs("#avatarUploadArea");
+  const fileInput = qs("#avatarFileInput");
+  const cropSection = qs("#avatarCropSection");
+  const canvas = qs("#avatarCanvas");
+  const cropAcceptBtn = qs("#cropAcceptBtn");
+  const cropCancelBtn = qs("#cropCancelBtn");
+  const removeAvatarBtn = qs("#removeAvatarBtn");
+  
+  if (!uploadArea || !fileInput) return;
+  
+  // Rimuovi event listeners esistenti per evitare duplicati
+  const newUploadArea = uploadArea.cloneNode(true);
+  uploadArea.parentNode.replaceChild(newUploadArea, uploadArea);
+  
+  const newFileInput = newUploadArea.querySelector("#avatarFileInput");
+  const newCropAcceptBtn = qs("#cropAcceptBtn");
+  const newCropCancelBtn = qs("#cropCancelBtn");
+  const newRemoveAvatarBtn = qs("#removeAvatarBtn");
+  
+  // Click per aprire file dialog
+  newUploadArea.addEventListener("click", () => {
+    newFileInput.click();
+  });
+  
+  // Drag and drop events
+  newUploadArea.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    newUploadArea.classList.add("drag-over");
+  });
+  
+  newUploadArea.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    newUploadArea.classList.remove("drag-over");
+  });
+  
+  newUploadArea.addEventListener("drop", (e) => {
+    e.preventDefault();
+    newUploadArea.classList.remove("drag-over");
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleAvatarFile(files[0]);
+    }
+  });
+  
+  // File input change
+  newFileInput.addEventListener("change", (e) => {
+    const files = e.target.files;
+    if (files.length > 0) {
+      handleAvatarFile(files[0]);
+    }
+  });
+  
+  // Crop buttons
+  newCropAcceptBtn?.addEventListener("click", acceptCrop);
+  newCropCancelBtn?.addEventListener("click", cancelCrop);
+  
+  // Remove avatar button
+  newRemoveAvatarBtn?.addEventListener("click", removeAvatar);
+}
+
+function handleAvatarFile(file) {
+  // Validazione del file
+  if (!file.type.includes("image/png")) {
+    toast("Solo file PNG sono supportati");
+    return;
+  }
+  
+  if (file.size > 2 * 1024 * 1024) { // 2MB max
+    toast("Il file è troppo grande. Massimo 2MB");
+    return;
+  }
+  
+  // Mostra la sezione crop
+  const uploadArea = qs("#avatarUploadArea");
+  const cropSection = qs("#avatarCropSection");
+  const canvas = qs("#avatarCanvas");
+  
+  if (uploadArea && cropSection && canvas) {
+    uploadArea.classList.add("hidden");
+    cropSection.classList.remove("hidden");
+    
+    // Carica l'immagine nel canvas per il crop
+    loadImageToCanvas(file, canvas);
+  }
+}
+
+function loadImageToCanvas(file, canvas) {
+  const ctx = canvas.getContext("2d");
+  const img = new Image();
+  
+  img.onload = () => {
+    // Pulisci il canvas
+    ctx.clearRect(0, 0, 36, 36);
+    
+    // Calcola le dimensioni per centrare e scalare l'immagine
+    const scale = Math.min(36 / img.width, 36 / img.height);
+    const scaledWidth = img.width * scale;
+    const scaledHeight = img.height * scale;
+    const offsetX = (36 - scaledWidth) / 2;
+    const offsetY = (36 - scaledHeight) / 2;
+    
+    // Disegna l'immagine
+    ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+    
+    // Mostra preview dell'immagine nel canvas
+    const avatarPreview = qs("#avatarPreview");
+    if (avatarPreview) {
+      const previewImg = document.createElement("img");
+      previewImg.src = canvas.toDataURL("image/png");
+      previewImg.style.width = "100%";
+      previewImg.style.height = "100%";
+      previewImg.style.objectFit = "cover";
+      
+      qs("#avatarPreviewContent").innerHTML = "";
+      qs("#avatarPreviewContent").appendChild(previewImg);
+    }
+  };
+  
+  img.src = URL.createObjectURL(file);
+}
+
+async function acceptCrop() {
+  const canvas = qs("#avatarCanvas");
+  if (!canvas) return;
+  
+  try {
+    // Converti il canvas in blob
+    const blob = await new Promise(resolve => {
+      canvas.toBlob(resolve, "image/png");
+    });
+    
+    if (!blob) {
+      toast("Errore nella conversione dell'immagine");
+      return;
+    }
+    
+    // Upload dell'avatar
+    const avatarUrl = await uploadAvatar(blob);
+    
+    if (avatarUrl) {
+      // Aggiorna il profilo con il nuovo avatar URL
+      const updatedProfile = await updateUserProfile({
+        avatar_url: avatarUrl
+      });
+      
+      if (updatedProfile) {
+        CURRENT_PROFILE = updatedProfile;
+        updateAvatarUI();
+        updateAvatarPreview();
+        toast("Avatar aggiornato con successo!");
+      }
+    }
+    
+    // Nascondi la sezione crop
+    cancelCrop();
+    
+  } catch (error) {
+    console.error("Errore upload avatar:", error);
+    toast("Errore durante l'upload dell'avatar");
+    cancelCrop();
+  }
+}
+
+function cancelCrop() {
+  const uploadArea = qs("#avatarUploadArea");
+  const cropSection = qs("#avatarCropSection");
+  const fileInput = qs("#avatarFileInput");
+  
+  if (uploadArea && cropSection) {
+    uploadArea.classList.remove("hidden");
+    cropSection.classList.add("hidden");
+  }
+  
+  if (fileInput) {
+    fileInput.value = "";
+  }
+  
+  // Ripristina l'anteprima originale
+  updateAvatarPreview();
+}
+
+async function removeAvatar() {
+  try {
+    // Aggiorna il profilo rimuovendo l'avatar URL
+    const updatedProfile = await updateUserProfile({
+      avatar_url: null
+    });
+    
+    if (updatedProfile) {
+      CURRENT_PROFILE = updatedProfile;
+      updateAvatarUI();
+      updateAvatarPreview();
+      toast("Avatar rimosso con successo!");
+    }
+    
+  } catch (error) {
+    console.error("Errore rimozione avatar:", error);
+    toast("Errore durante la rimozione dell'avatar");
   }
 }
 

@@ -450,10 +450,10 @@
                 />
               </div>
               <div>
-                <label class="label">Nome visualizzazione</label>
+                <label class="label">Nickname</label>
                 <input
                   name="display_name"
-                  placeholder="Il tuo nome"
+                  placeholder="Il tuo nickname"
                   class="input"
                 />
               </div>
@@ -465,6 +465,56 @@
                   readonly
                   class="input input-readonly"
                 />
+              </div>
+            </div>
+          </div>
+
+          <!-- Sezione Avatar -->
+          <div class="profile-section">
+            <h4 class="section-title">
+              <svg data-lucide="image" class="icon"></svg>
+              Avatar
+            </h4>
+            <div class="avatar-upload-section">
+              <div class="avatar-preview-container">
+                <div id="avatarPreview" class="avatar-preview">
+                  <div id="avatarPreviewContent" class="avatar-preview-content">
+                    <svg data-lucide="user" class="icon-large"></svg>
+                    <span class="preview-text">Nessun avatar</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="avatar-controls">
+                <div class="upload-area" id="avatarUploadArea">
+                  <input type="file" id="avatarFileInput" accept="image/png" hidden>
+                  <div class="upload-content">
+                    <svg data-lucide="upload" class="icon"></svg>
+                    <span>Trascina un file PNG qui o clicca per selezionare</span>
+                    <small>Solo PNG, max 36x36 pixels (ridimensionamento automatico)</small>
+                  </div>
+                </div>
+                
+                <div id="avatarCropSection" class="crop-section hidden">
+                  <canvas id="avatarCanvas" width="36" height="36"></canvas>
+                  <div class="crop-controls">
+                    <button type="button" id="cropAcceptBtn" class="btn btn-accent btn-sm">
+                      <svg data-lucide="check" class="icon"></svg>
+                      <span>Conferma</span>
+                    </button>
+                    <button type="button" id="cropCancelBtn" class="btn btn-ghost btn-sm">
+                      <svg data-lucide="x" class="icon"></svg>
+                      <span>Annulla</span>
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="avatar-actions">
+                  <button type="button" id="removeAvatarBtn" class="btn btn-ghost btn-sm">
+                    <svg data-lucide="trash-2" class="icon"></svg>
+                    <span>Rimuovi Avatar</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
