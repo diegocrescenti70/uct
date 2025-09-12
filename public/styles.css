@@ -682,6 +682,32 @@ div#personHeader {
   height: 14px;
 }
 
+/* Button danger variant */
+.btn-danger {
+  background: #dc2626;
+  color: white;
+  border: 1px solid #dc2626;
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+/* Modal footer layout */
+.modal__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal__footer-left,
+.modal__footer-right {
+  display: flex;
+  gap: 8px;
+}
+
 /* Responsive avatar upload */
 @media (max-width: 640px) {
   .avatar-upload-section {
@@ -729,13 +755,14 @@ div#personHeader {
     grid-template-columns: 2fr 1fr;
     grid-template-areas:
       "stats stats"
-      "calendar sidebar";
+      "calendar quick-actions"
+      "calendar recent-activity";
   }
   
   .stats-grid { grid-area: stats; }
   .calendar-section { grid-area: calendar; }
-  .quick-actions { grid-area: sidebar; }
-  .recent-activity { grid-area: sidebar; }
+  .quick-actions { grid-area: quick-actions; }
+  .recent-activity { grid-area: recent-activity; }
 }
 
 /* Stats Cards */
@@ -1004,5 +1031,38 @@ div#personHeader {
   .calendar-actions .btn {
     width: 100%;
     justify-content: center;
+  }
+  
+  /* Fix calendario troppo largo su mobile */
+  .calendar-section {
+    padding: 12px;
+    margin: 0 -8px; /* Compensa padding container */
+  }
+  
+  .calendar-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* FullCalendar mobile adjustments */
+  .fc-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .fc-toolbar-chunk {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  
+  .fc-button {
+    padding: 6px 8px !important;
+    font-size: 0.8rem !important;
+  }
+  
+  .fc-daygrid-event {
+    font-size: 0.7rem;
+    padding: 1px 2px;
   }
 }

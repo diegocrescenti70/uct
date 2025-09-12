@@ -37,6 +37,8 @@ const txnModal = qs("#txnModal");
 const txnForm = qs("#txnForm");
 const profileModal = qs("#profileModal");
 const profileForm = qs("#profileForm");
+const eventModal = qs("#eventModal");
+const eventForm = qs("#eventForm");
 const txnKindEl = qs("#txnKind");
 const txnCategoryEl = qs("#txnCategory");
 
@@ -62,6 +64,7 @@ let CURRENT_PERSON = null;
 let CATEGORIES = [];
 let EDITING_PERSON = null; // Per gestire la modifica
 let EDITING_TRANSACTION = null; // Per gestire la modifica delle transazioni
+let EDITING_EVENT = null; // Per gestire la modifica degli eventi
 
 // --- Init ---
 document.addEventListener("DOMContentLoaded", async () => {
@@ -69,6 +72,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     lucide.createIcons();
   } catch {}
+  
+  // Setup event modal handlers
+  setupEventModalHandlers();
 
   // Tema: dark di default
   applyTheme(localStorage.getItem("theme") || "dark");
@@ -1764,20 +1770,17 @@ function getEventColor(type) {
 // Gestisci click su evento
 function handleEventClick(info) {
   const event = info.event;
-  toast(`Evento: ${event.title}\nData: ${event.start.toLocaleDateString('it-IT')}`);
-  // TODO: Aprire modal modifica evento
+  openEventModal(null, event);
 }
 
 // Gestisci click su data
 function handleDateClick(info) {
-  // TODO: Aprire modal nuovo evento per quella data
-  toast(`Selezionata data: ${info.dateStr}`);
+  openEventModal(null, null, info.dateStr);
 }
 
 // Gestisci selezione range di date
 function handleDateSelect(info) {
-  // TODO: Aprire modal nuovo evento per il range selezionato
-  toast(`Selezionato periodo: ${info.startStr} - ${info.endStr}`);
+  openEventModal(null, null, info.startStr, info.endStr);
 }
 
 // Gestisci drag & drop eventi
@@ -1889,8 +1892,7 @@ function setupDashboardHandlers() {
   // Bottone nuovo evento
   const addEventBtn = qs('#addEventBtn');
   addEventBtn?.addEventListener('click', () => {
-    toast('Modal nuovo evento in arrivo!');
-    // TODO: Aprire modal nuovo evento
+    openEventModal();
   });
   
   // Bottone export calendario
@@ -1905,29 +1907,25 @@ function setupDashboardHandlers() {
       handleQuickAction(action);
     });
   });
+  
+  // Form evento submit
+  eventForm?.addEventListener('submit', handleEventSubmit);
 }
 
 // Gestisci azioni rapide
 function handleQuickAction(action) {
-  switch(action) {
-    case 'add-exam':
-      toast('Aggiunta esame in arrivo!');
-      // TODO: Aprire modal nuovo esame
-      break;
-    case 'add-reminder':
-      toast('Nuovo promemoria in arrivo!');
-      // TODO: Aprire modal nuovo reminder
-      break;
-    case 'add-lecture':
-      toast('Nuova lezione in arrivo!');
-      // TODO: Aprire modal nuova lezione
-      break;
-    case 'add-deadline':
-      toast('Nuova scadenza in arrivo!');
-      // TODO: Aprire modal nuova scadenza
-      break;
-    default:
-      toast('Funzione in sviluppo!');
+  const typeMap = {
+    'add-exam': 'exam',
+    'add-reminder': 'reminder',
+    'add-lecture': 'lecture', 
+    'add-deadline': 'deadline'
+  };
+  
+  const eventType = typeMap[action];
+  if (eventType) {
+    openEventModal(eventType);
+  } else {
+    toast('Funzione in sviluppo!');
   }
 }
 
@@ -2004,6 +2002,237 @@ METHOD:PUBLISH
   
   icsContent += `END:VCALENDAR`;
   return icsContent;
+}
+
+// ========== EVENT MODAL & CRUD ==========
+
+// Apri modal evento (per nuovo evento o modifica)
+function openEventModal(presetType = null, existingEvent = null, startDate = null, endDate = null) {
+  if (!eventModal) return;
+  
+  EDITING_EVENT = existingEvent?.id || null;
+  
+  // Reset form
+  eventForm?.reset();
+  
+  // Configura il titolo del modal
+  const modalTitle = qs('#eventModalTitle');
+  const saveBtn = qs('#saveEventBtn');
+  const deleteBtn = qs('#deleteEventBtn');
+  
+  if (existingEvent) {
+    modalTitle.textContent = 'Modifica Evento';
+    saveBtn.innerHTML = '<svg data-lucide="save" class="icon"></svg><span>Aggiorna Evento</span>';
+    deleteBtn?.classList.remove('hidden');
+    
+    // Precompila con i dati esistenti
+    qs('#eventTitle').value = existingEvent.title || '';
+    qs('#eventType').value = existingEvent.extendedProps?.type || 'event';
+    qs('#eventDescription').value = existingEvent.extendedProps?.description || '';
+    qs('#eventLocation').value = existingEvent.extendedProps?.location || '';
+    qs('#eventReminder').value = existingEvent.extendedProps?.reminder_minutes || '60';
+    
+    // Date in formato datetime-local
+    if (existingEvent.start) {
+      qs('#eventStartDate').value = formatDateTimeLocal(existingEvent.start);
+    }
+    if (existingEvent.end) {
+      qs('#eventEndDate').value = formatDateTimeLocal(existingEvent.end);
+    }
+  } else {
+    modalTitle.textContent = 'Nuovo Evento';
+    saveBtn.innerHTML = '<svg data-lucide="save" class="icon"></svg><span>Salva Evento</span>';
+    deleteBtn?.classList.add('hidden');
+    
+    // Precompilazione per nuovo evento
+    if (presetType) {
+      qs('#eventType').value = presetType;
+    }
+    
+    if (startDate) {
+      qs('#eventStartDate').value = formatDateTimeLocal(new Date(startDate));
+    }
+    
+    if (endDate) {
+      qs('#eventEndDate').value = formatDateTimeLocal(new Date(endDate));
+    }
+  }
+  
+  // Rigenera icone
+  try {
+    lucide.createIcons();
+  } catch {}
+  
+  eventModal.showModal();
+}
+
+// Chiudi modal evento
+function closeEventModal() {
+  if (eventModal) {
+    eventModal.close();
+    EDITING_EVENT = null;
+  }
+}
+
+// Gestisci submit form evento
+async function handleEventSubmit(e) {
+  e.preventDefault();
+  
+  if (!CURRENT_USER) {
+    toast('Devi essere autenticato per salvare eventi');
+    return;
+  }
+  
+  const formData = {
+    title: qs('#eventTitle').value.trim(),
+    type: qs('#eventType').value,
+    description: qs('#eventDescription').value.trim(),
+    start_date: qs('#eventStartDate').value,
+    end_date: qs('#eventEndDate').value || null,
+    location: qs('#eventLocation').value.trim(),
+    reminder_minutes: parseInt(qs('#eventReminder').value) || 60,
+    user_id: CURRENT_USER.id
+  };
+  
+  if (!formData.title || !formData.start_date) {
+    toast('Titolo e data di inizio sono obbligatori');
+    return;
+  }
+  
+  try {
+    const saveBtn = qs('#saveEventBtn');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<svg data-lucide="loader-2" class="icon animate-spin"></svg><span>Salvando...</span>';
+    
+    let result;
+    
+    if (EDITING_EVENT) {
+      // Aggiorna evento esistente
+      result = await supabase
+        .from('events')
+        .update({
+          title: formData.title,
+          type: formData.type,
+          description: formData.description,
+          start_date: new Date(formData.start_date).toISOString(),
+          end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
+          location: formData.location,
+          reminder_minutes: formData.reminder_minutes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', EDITING_EVENT)
+        .eq('user_id', CURRENT_USER.id);
+    } else {
+      // Crea nuovo evento
+      result = await supabase
+        .from('events')
+        .insert({
+          title: formData.title,
+          type: formData.type,
+          description: formData.description,
+          start_date: new Date(formData.start_date).toISOString(),
+          end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
+          location: formData.location,
+          reminder_minutes: formData.reminder_minutes,
+          user_id: CURRENT_USER.id
+        });
+    }
+    
+    if (result.error) {
+      console.error('Error saving event:', result.error);
+      toast('Errore nel salvare l\'evento');
+      return;
+    }
+    
+    // Aggiorna calendario e statistiche
+    if (calendar) {
+      calendar.refetchEvents();
+    }
+    loadDashboardStats();
+    
+    toast(EDITING_EVENT ? 'Evento aggiornato!' : 'Evento salvato!');
+    closeEventModal();
+    
+  } catch (error) {
+    console.error('Error in handleEventSubmit:', error);
+    toast('Errore nel salvare l\'evento');
+  } finally {
+    const saveBtn = qs('#saveEventBtn');
+    if (saveBtn) {
+      saveBtn.innerHTML = EDITING_EVENT ? '<svg data-lucide="save" class="icon"></svg><span>Aggiorna Evento</span>' : '<svg data-lucide="save" class="icon"></svg><span>Salva Evento</span>';
+    }
+  }
+}
+
+// Elimina evento
+async function deleteEvent(eventId) {
+  if (!CURRENT_USER || !confirm('Sei sicuro di voler eliminare questo evento?')) {
+    return;
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('events')
+      .delete()
+      .eq('id', eventId)
+      .eq('user_id', CURRENT_USER.id);
+    
+    if (error) {
+      console.error('Error deleting event:', error);
+      toast('Errore nell\'eliminazione dell\'evento');
+      return;
+    }
+    
+    // Aggiorna calendario e statistiche
+    if (calendar) {
+      calendar.refetchEvents();
+    }
+    loadDashboardStats();
+    
+    toast('Evento eliminato!');
+    closeEventModal();
+    
+  } catch (error) {
+    console.error('Error in deleteEvent:', error);
+    toast('Errore nell\'eliminazione');
+  }
+}
+
+// Formatta data per input datetime-local
+function formatDateTimeLocal(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+// Setup event handlers per il modal
+function setupEventModalHandlers() {
+  // Chiusura modal con bottone X o Annulla
+  eventModal?.addEventListener('click', (e) => {
+    if (e.target === eventModal || e.target.closest('[value="close"]')) {
+      closeEventModal();
+    }
+  });
+  
+  // Bottone elimina evento
+  const deleteBtn = qs('#deleteEventBtn');
+  deleteBtn?.addEventListener('click', () => {
+    if (EDITING_EVENT) {
+      deleteEvent(EDITING_EVENT);
+    }
+  });
+  
+  // Escape key per chiudere modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && eventModal?.open) {
+      closeEventModal();
+    }
+  });
 }
 
 // --- Utils ---

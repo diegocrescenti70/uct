@@ -376,6 +376,91 @@
       </section>
     </main>
 
+    <!-- MODAL: EVENTO -->
+    <dialog id="eventModal" class="modal">
+      <form method="dialog" id="eventForm" class="modal__card">
+        <div class="modal__header">
+          <div class="modal__title">
+            <svg data-lucide="calendar-plus" class="icon"></svg>
+            <h3 id="eventModalTitle">Nuovo Evento</h3>
+          </div>
+          <button type="button" class="btn btn-ghost" value="close">
+            <svg data-lucide="x" class="icon"></svg>
+          </button>
+        </div>
+
+        <div class="modal__body">
+          <div class="grid-2">
+            <div>
+              <label class="label">Titolo *</label>
+              <input id="eventTitle" type="text" class="input" placeholder="es. Esame di Matematica" required />
+            </div>
+            <div>
+              <label class="label">Tipo Evento</label>
+              <select id="eventType" class="input">
+                <option value="event">📅 Evento Generico</option>
+                <option value="exam">📚 Esame</option>
+                <option value="lecture">🏫 Lezione</option>
+                <option value="deadline">⚠️ Scadenza</option>
+                <option value="reminder">⏰ Promemoria</option>
+                <option value="appointment">🤝 Appuntamento</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="label">Descrizione</label>
+            <textarea id="eventDescription" class="input" rows="2" placeholder="Descrizione opzionale..."></textarea>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label class="label">Data/Ora Inizio *</label>
+              <input id="eventStartDate" type="datetime-local" class="input" required />
+            </div>
+            <div>
+              <label class="label">Data/Ora Fine</label>
+              <input id="eventEndDate" type="datetime-local" class="input" />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label class="label">Luogo</label>
+              <input id="eventLocation" type="text" class="input" placeholder="es. Aula Magna" />
+            </div>
+            <div>
+              <label class="label">Promemoria</label>
+              <select id="eventReminder" class="input">
+                <option value="0">Nessun promemoria</option>
+                <option value="15">15 minuti prima</option>
+                <option value="30">30 minuti prima</option>
+                <option value="60" selected>1 ora prima</option>
+                <option value="1440">1 giorno prima</option>
+                <option value="10080">1 settimana prima</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal__footer">
+          <div class="modal__footer-left">
+            <button type="button" id="deleteEventBtn" class="btn btn-danger hidden">
+              <svg data-lucide="trash-2" class="icon"></svg>
+              <span>Elimina</span>
+            </button>
+          </div>
+          <div class="modal__footer-right">
+            <button type="button" class="btn btn-ghost" value="close">Annulla</button>
+            <button type="submit" id="saveEventBtn" class="btn btn-primary">
+              <svg data-lucide="save" class="icon"></svg>
+              <span>Salva Evento</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
     <!-- MODAL: PERSONA -->
     <dialog id="personModal" class="modal">
       <form method="dialog" id="personForm" class="modal__card">
