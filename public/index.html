@@ -16,6 +16,10 @@
     <link rel="stylesheet" href="/styles.css?v=2025-09-11-01-02">
     <script src="/env.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- FullCalendar -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <!-- ICS export library -->
+    <script src="https://cdn.jsdelivr.net/npm/ics@3.7.6/dist/bundle.min.js"></script>
   </head>
 
   <body>
@@ -260,6 +264,113 @@
               <svg data-lucide="plus" class="icon"></svg
               ><span>Nuova registrazione</span>
             </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- DASHBOARD VIEW -->
+      <section id="dashboardView" class="view hidden">
+        <div class="dashboard-header">
+          <h1>🎓 Dashboard Universitario</h1>
+          <p>Panoramica del tuo percorso accademico</p>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Quick Stats Cards -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg data-lucide="calendar" class="icon"></svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="upcomingEvents">-</div>
+                <div class="stat-label">Prossimi Eventi</div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg data-lucide="graduation-cap" class="icon"></svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="totalExams">-</div>
+                <div class="stat-label">Esami Pianificati</div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg data-lucide="clock" class="icon"></svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="todayReminders">-</div>
+                <div class="stat-label">Promemoria Oggi</div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg data-lucide="trophy" class="icon"></svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="averageGrade">-</div>
+                <div class="stat-label">Media Voti</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Calendar Section -->
+          <div class="calendar-section">
+            <div class="section-header">
+              <h2>📅 Calendario Accademico</h2>
+              <div class="calendar-actions">
+                <button id="addEventBtn" class="btn btn-primary">
+                  <svg data-lucide="plus" class="icon"></svg>
+                  <span>Nuovo Evento</span>
+                </button>
+                <button id="exportCalendarBtn" class="btn btn-ghost">
+                  <svg data-lucide="download" class="icon"></svg>
+                  <span>Esporta ICS</span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- FullCalendar container -->
+            <div id="calendar" class="calendar-container"></div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="quick-actions">
+            <h3>Azioni Rapide</h3>
+            <div class="action-buttons">
+              <button class="action-btn" data-action="add-exam">
+                <svg data-lucide="book-open" class="icon"></svg>
+                <span>Aggiungi Esame</span>
+              </button>
+              <button class="action-btn" data-action="add-reminder">
+                <svg data-lucide="bell" class="icon"></svg>
+                <span>Nuovo Promemoria</span>
+              </button>
+              <button class="action-btn" data-action="add-lecture">
+                <svg data-lucide="school" class="icon"></svg>
+                <span>Lezione</span>
+              </button>
+              <button class="action-btn" data-action="add-deadline">
+                <svg data-lucide="alert-circle" class="icon"></svg>
+                <span>Scadenza</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Recent Activity -->
+          <div class="recent-activity">
+            <h3>Attività Recente</h3>
+            <div id="recentActivityList" class="activity-list">
+              <div class="activity-item placeholder">
+                <svg data-lucide="info" class="icon"></svg>
+                <span>Nessuna attività recente</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>

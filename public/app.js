@@ -12,6 +12,7 @@ const supabase = createClient(
 const authView = qs("#authView");
 const homeView = qs("#homeView");
 const personView = qs("#personView");
+const dashboardView = qs("#dashboardView");
 
 const themeToggle = qs("#themeToggle");
 const userMenu = qs("#userMenu");
@@ -209,7 +210,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         await openProfileModal();
         break;
       case "dashboard":
-        toast("Funzione Dashboard in arrivo!");
+        showView("dashboard");
         break;
       case "categories":
         toast("Funzione Categorie in arrivo!");
@@ -271,7 +272,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         await openProfileModal();
         break;
       case "dashboard":
-        toast("Funzione Dashboard in arrivo!");
+        showView("dashboard");
         break;
       case "categories":
         toast("Funzione Categorie in arrivo!");
@@ -357,10 +358,15 @@ async function bindAuthUI() {
 }
 
 function showView(name) {
-  [authView, homeView, personView].forEach((v) => v?.classList.add("hidden"));
+  [authView, homeView, personView, dashboardView].forEach((v) => v?.classList.add("hidden"));
   if (name === "auth") authView?.classList.remove("hidden");
   if (name === "home") homeView?.classList.remove("hidden");
   if (name === "person") personView?.classList.remove("hidden");
+  if (name === "dashboard") {
+    dashboardView?.classList.remove("hidden");
+    // Inizializza il calendario se non esiste
+    setTimeout(() => initializeDashboard(), 100);
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -1665,6 +1671,339 @@ async function removeAvatar() {
     console.error("Errore rimozione avatar:", error);
     toast("Errore durante la rimozione dell'avatar");
   }
+}
+
+// ========== DASHBOARD MODULE ==========
+let calendar = null; // Istanza FullCalendar
+
+// Inizializza dashboard e calendario
+function initializeDashboard() {
+  if (calendar) return; // Già inizializzato
+  
+  const calendarEl = qs('#calendar');
+  if (!calendarEl) return;
+  
+  calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    locale: 'it',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,timeGridDay'
+    },
+    height: 'auto',
+    events: loadCalendarEvents,
+    eventClick: handleEventClick,
+    dateClick: handleDateClick,
+    editable: true,
+    selectable: true,
+    select: handleDateSelect,
+    eventDrop: handleEventDrop,
+    eventResize: handleEventResize
+  });
+  
+  calendar.render();
+  
+  // Carica statistiche dashboard
+  loadDashboardStats();
+  
+  // Setup event handlers
+  setupDashboardHandlers();
+}
+
+// Carica eventi dal database per FullCalendar
+async function loadCalendarEvents() {
+  if (!CURRENT_USER) return [];
+  
+  try {
+    const { data: events, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('user_id', CURRENT_USER.id)
+      .order('start_date', { ascending: true });
+    
+    if (error) {
+      console.error('Error loading events:', error);
+      return [];
+    }
+    
+    return events.map(event => ({
+      id: event.id,
+      title: event.title,
+      start: event.start_date,
+      end: event.end_date,
+      description: event.description,
+      extendedProps: {
+        type: event.type,
+        location: event.location,
+        reminder_minutes: event.reminder_minutes
+      },
+      backgroundColor: getEventColor(event.type),
+      borderColor: getEventColor(event.type)
+    }));
+    
+  } catch (error) {
+    console.error('Error in loadCalendarEvents:', error);
+    return [];
+  }
+}
+
+// Colori per diversi tipi di eventi
+function getEventColor(type) {
+  const colors = {
+    'exam': '#ef4444', // Rosso - Esami
+    'lecture': '#3b82f6', // Blu - Lezioni
+    'deadline': '#f59e0b', // Arancione - Scadenze
+    'reminder': '#10b981', // Verde - Promemoria
+    'event': '#8b5cf6', // Viola - Eventi generici
+    'appointment': '#ec4899' // Rosa - Appuntamenti
+  };
+  return colors[type] || '#6b7280'; // Grigio default
+}
+
+// Gestisci click su evento
+function handleEventClick(info) {
+  const event = info.event;
+  toast(`Evento: ${event.title}\nData: ${event.start.toLocaleDateString('it-IT')}`);
+  // TODO: Aprire modal modifica evento
+}
+
+// Gestisci click su data
+function handleDateClick(info) {
+  // TODO: Aprire modal nuovo evento per quella data
+  toast(`Selezionata data: ${info.dateStr}`);
+}
+
+// Gestisci selezione range di date
+function handleDateSelect(info) {
+  // TODO: Aprire modal nuovo evento per il range selezionato
+  toast(`Selezionato periodo: ${info.startStr} - ${info.endStr}`);
+}
+
+// Gestisci drag & drop eventi
+async function handleEventDrop(info) {
+  try {
+    const event = info.event;
+    await updateEventDate(event.id, event.start, event.end);
+    toast('Evento spostato con successo!');
+  } catch (error) {
+    console.error('Error updating event:', error);
+    toast('Errore nello spostamento evento');
+    info.revert(); // Ripristina posizione originale
+  }
+}
+
+// Gestisci resize eventi
+async function handleEventResize(info) {
+  try {
+    const event = info.event;
+    await updateEventDate(event.id, event.start, event.end);
+    toast('Durata evento aggiornata!');
+  } catch (error) {
+    console.error('Error resizing event:', error);
+    toast('Errore nel ridimensionamento evento');
+    info.revert();
+  }
+}
+
+// Aggiorna date evento nel database
+async function updateEventDate(eventId, newStart, newEnd) {
+  const { error } = await supabase
+    .from('events')
+    .update({
+      start_date: newStart?.toISOString(),
+      end_date: newEnd?.toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', eventId)
+    .eq('user_id', CURRENT_USER.id);
+    
+  if (error) throw error;
+}
+
+// Carica statistiche dashboard
+async function loadDashboardStats() {
+  if (!CURRENT_USER) return;
+  
+  try {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Prossimi eventi (7 giorni)
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    
+    const { data: upcomingEvents } = await supabase
+      .from('events')
+      .select('id')
+      .eq('user_id', CURRENT_USER.id)
+      .gte('start_date', today.toISOString())
+      .lte('start_date', nextWeek.toISOString());
+    
+    // Esami totali pianificati
+    const { data: totalExams } = await supabase
+      .from('events')
+      .select('id')
+      .eq('user_id', CURRENT_USER.id)
+      .eq('type', 'exam')
+      .gte('start_date', today.toISOString());
+    
+    // Promemoria oggi
+    const { data: todayReminders } = await supabase
+      .from('events')
+      .select('id')
+      .eq('user_id', CURRENT_USER.id)
+      .eq('type', 'reminder')
+      .gte('start_date', today.toISOString())
+      .lt('start_date', tomorrow.toISOString());
+    
+    // Aggiorna UI
+    updateDashboardStats({
+      upcomingEvents: upcomingEvents?.length || 0,
+      totalExams: totalExams?.length || 0,
+      todayReminders: todayReminders?.length || 0,
+      averageGrade: '--' // TODO: Calcolare dalla tabella grades
+    });
+    
+  } catch (error) {
+    console.error('Error loading dashboard stats:', error);
+  }
+}
+
+// Aggiorna le statistiche nell'UI
+function updateDashboardStats(stats) {
+  const upcomingEl = qs('#upcomingEvents');
+  const examsEl = qs('#totalExams');
+  const remindersEl = qs('#todayReminders');
+  const gradeEl = qs('#averageGrade');
+  
+  if (upcomingEl) upcomingEl.textContent = stats.upcomingEvents;
+  if (examsEl) examsEl.textContent = stats.totalExams;
+  if (remindersEl) remindersEl.textContent = stats.todayReminders;
+  if (gradeEl) gradeEl.textContent = stats.averageGrade;
+}
+
+// Setup event handlers della dashboard
+function setupDashboardHandlers() {
+  // Bottone nuovo evento
+  const addEventBtn = qs('#addEventBtn');
+  addEventBtn?.addEventListener('click', () => {
+    toast('Modal nuovo evento in arrivo!');
+    // TODO: Aprire modal nuovo evento
+  });
+  
+  // Bottone export calendario
+  const exportBtn = qs('#exportCalendarBtn');
+  exportBtn?.addEventListener('click', exportCalendarToICS);
+  
+  // Azioni rapide
+  const actionBtns = document.querySelectorAll('.action-btn');
+  actionBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const action = e.currentTarget.getAttribute('data-action');
+      handleQuickAction(action);
+    });
+  });
+}
+
+// Gestisci azioni rapide
+function handleQuickAction(action) {
+  switch(action) {
+    case 'add-exam':
+      toast('Aggiunta esame in arrivo!');
+      // TODO: Aprire modal nuovo esame
+      break;
+    case 'add-reminder':
+      toast('Nuovo promemoria in arrivo!');
+      // TODO: Aprire modal nuovo reminder
+      break;
+    case 'add-lecture':
+      toast('Nuova lezione in arrivo!');
+      // TODO: Aprire modal nuova lezione
+      break;
+    case 'add-deadline':
+      toast('Nuova scadenza in arrivo!');
+      // TODO: Aprire modal nuova scadenza
+      break;
+    default:
+      toast('Funzione in sviluppo!');
+  }
+}
+
+// Export calendario in formato ICS
+async function exportCalendarToICS() {
+  if (!CURRENT_USER) return;
+  
+  try {
+    const events = await loadCalendarEvents();
+    
+    if (events.length === 0) {
+      toast('Nessun evento da esportare');
+      return;
+    }
+    
+    // Crea eventi ICS usando la libreria ics
+    const icsEvents = events.map(event => ({
+      title: event.title,
+      description: event.description || '',
+      start: new Date(event.start).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''),
+      end: event.end ? new Date(event.end).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '') : undefined,
+      location: event.extendedProps?.location || ''
+    }));
+    
+    // Genera file ICS
+    const icsContent = generateICS(icsEvents);
+    
+    // Download del file
+    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `calendario-universitario-${new Date().toISOString().split('T')[0]}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast('Calendario esportato con successo!');
+    
+  } catch (error) {
+    console.error('Error exporting calendar:', error);
+    toast('Errore durante l\'esportazione');
+  }
+}
+
+// Genera contenuto ICS manualmente (alternativa alla libreria)
+function generateICS(events) {
+  let icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//UCT//University Course Tracking//IT
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+`;
+  
+  events.forEach(event => {
+    icsContent += `BEGIN:VEVENT
+`;
+    icsContent += `UID:${Date.now()}-${Math.random().toString(36).substr(2, 9)}@uct.app
+`;
+    icsContent += `DTSTART:${event.start}
+`;
+    if (event.end) icsContent += `DTEND:${event.end}
+`;
+    icsContent += `SUMMARY:${event.title}
+`;
+    if (event.description) icsContent += `DESCRIPTION:${event.description}
+`;
+    if (event.location) icsContent += `LOCATION:${event.location}
+`;
+    icsContent += `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}
+`;
+    icsContent += `END:VEVENT
+`;
+  });
+  
+  icsContent += `END:VCALENDAR`;
+  return icsContent;
 }
 
 // --- Utils ---
