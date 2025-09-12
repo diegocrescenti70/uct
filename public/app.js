@@ -165,6 +165,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             window.scrollTo(0, 0);
           }, 100);
         }
+      } else if (closeBtn.closest("#eventModal")) {
+        closeEventModal();
+        // Fix viewport dopo chiusura modale su mobile
+        if (window.innerWidth <= 768) {
+          setTimeout(() => {
+            document.body.style.minHeight = window.innerHeight + 'px';
+            window.scrollTo(0, 0);
+          }, 100);
+        }
       }
     }
   });
@@ -1953,16 +1962,53 @@ async function exportCalendarToICS() {
     // Genera file ICS
     const icsContent = generateICS(icsEvents);
     
-    // Download del file
+    // Download del file con supporto mobile
     const blob = new Blob([icsContent], { type: 'text/calendar' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `calendario-universitario-${new Date().toISOString().split('T')[0]}.ics`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const filename = `calendario-universitario-${new Date().toISOString().split('T')[0]}.ics`;
     
-    toast('Calendario esportato con successo!');
+    // Prova con Web Share API per mobile (iOS/Android)
+    if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
+      try {
+        const file = new File([blob], filename, { type: 'text/calendar' });
+        await navigator.share({
+          title: 'Calendario Universitario UCT',
+          text: 'Il tuo calendario accademico in formato ICS per Google Calendar/Apple Calendar',
+          files: [file]
+        });
+        toast('Calendario condiviso con successo!');
+        return;
+      } catch (shareError) {
+        console.log('Web Share non supportato, usando fallback:', shareError);
+      }
+    }
+    
+    // Fallback standard per desktop e mobile senza Web Share
+    const url = URL.createObjectURL(blob);
+    
+    // Per mobile senza Web Share, apri in nuova finestra
+    if (/Mobi|Android/i.test(navigator.userAgent)) {
+      const newWindow = window.open(url, '_blank');
+      if (!newWindow) {
+        // Se popup bloccato, prova con link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } else {
+      // Desktop: download classico
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+    }
+    
+    URL.revokeObjectURL(url);
+    toast('Calendario esportato! Controlla Downloads o condividi il file.');
     
   } catch (error) {
     console.error('Error exporting calendar:', error);
