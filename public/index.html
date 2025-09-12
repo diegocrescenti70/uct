@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="it" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no,maximum-scale=1"
+    />
+    <title>UCT · University Course Tracking</title>
+    <meta name="theme-color" content="#0b0c11" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css?v=2025-09-11-01-02">
+    <script src="/env.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+
+  <body>
+    <!-- sfondo -->
+    <div class="bg-decor"></div>
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="brand">
+        <img src="/assets/logo-shield.svg" alt="UCT" class="brand__logo" />
+        <div class="brand__text">
+          <div class="brand__title">UCT</div>
+          <div class="brand__sub">University Course Tracking</div>
+        </div>
+      </div>
+
+      <div class="topbar__actions">
+        <!-- Toggle tema -->
+        <button id="themeToggle" class="btn btn-ghost" aria-label="Cambia tema">
+          <svg data-lucide="moon" class="icon theme-moon"></svg>
+          <svg data-lucide="sun" class="icon theme-sun hidden"></svg>
+          <span class="hide-sm">Tema</span>
+        </button>
+
+        <!-- User menu -->
+        <div id="userMenu" class="user-menu hidden">
+          <button
+            id="userAvatarBtn"
+            class="avatar"
+            title=""
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-label="Menu utente"
+          >
+            <span id="userAvatarInitials">U</span>
+          </button>
+
+          <!-- Desktop dropdown -->
+          <div id="userDropdown" class="dropdown hidden" role="menu">
+            <button class="dropdown__item" role="menuitem" data-action="profile">
+              <svg data-lucide="user" class="icon"></svg><span>Profilo</span>
+            </button>
+            <div class="dropdown__separator"></div>
+            <button class="dropdown__item" role="menuitem" data-action="dashboard">
+              <svg data-lucide="home" class="icon"></svg><span>Dashboard</span>
+            </button>
+            <button class="dropdown__item" role="menuitem" data-action="categories">
+              <svg data-lucide="tags" class="icon"></svg><span>Categorie</span>
+            </button>
+            <div class="dropdown__separator"></div>
+            <button class="dropdown__item" role="menuitem" data-action="settings">
+              <svg data-lucide="settings" class="icon"></svg><span>Impostazioni</span>
+            </button>
+            <button id="signOutBtn" class="dropdown__item" role="menuitem" data-action="signout">
+              <svg data-lucide="log-out" class="icon"></svg><span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Mobile menu overlay -->
+        <div id="userMenuMobile" class="user-menu-mobile hidden" role="dialog" aria-modal="true">
+          <div class="mobile-menu-card">
+            <div class="mobile-menu-header">
+              <div class="mobile-menu-title">Menu Account</div>
+              <button class="mobile-close-btn" aria-label="Chiudi menu">
+                <svg data-lucide="x" width="16" height="16"></svg>
+              </button>
+            </div>
+            
+            <div class="mobile-menu-content">
+              <button class="mobile-menu-item" data-action="profile">
+                <svg data-lucide="user" class="icon"></svg><span>Profilo</span>
+              </button>
+              <div class="mobile-menu-separator"></div>
+              <button class="mobile-menu-item" data-action="dashboard">
+                <svg data-lucide="home" class="icon"></svg><span>Dashboard</span>
+              </button>
+              <button class="mobile-menu-item" data-action="categories">
+                <svg data-lucide="tags" class="icon"></svg><span>Categorie</span>
+              </button>
+              <div class="mobile-menu-separator"></div>
+              <button class="mobile-menu-item" data-action="settings">
+                <svg data-lucide="settings" class="icon"></svg><span>Impostazioni</span>
+              </button>
+              <button class="mobile-menu-item" data-action="signout">
+                <svg data-lucide="log-out" class="icon"></svg><span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <!-- AUTH VIEW -->
+      <section id="authView" class="view centered">
+        <div class="auth-card">
+          <div class="auth-card__banner">
+            <img
+              src="/assets/logo-shield.svg"
+              class="auth-card__shield"
+              alt=""
+            />
+            <div class="auth-card__brand">
+              <span class="auth-card__uct">UCT</span>
+              <span class="auth-card__sub">University Course Tracking</span>
+            </div>
+          </div>
+
+          <div class="auth-card__body">
+            <h1>Accedi o Registrati</h1>
+            <p>Gestisci spese e ricavi del percorso universitario.</p>
+
+            <form id="authForm" class="form">
+              <label class="label">Email</label>
+              <div class="field">
+                <svg data-lucide="mail" class="icon"></svg>
+                <input
+                  id="authEmail"
+                  type="email"
+                  required
+                  placeholder="nome@dominio.com"
+                />
+              </div>
+
+              <label class="label">Password</label>
+              <div class="field">
+                <svg data-lucide="lock" class="icon"></svg>
+                <input
+                  id="authPassword"
+                  type="password"
+                  minlength="6"
+                  required
+                  placeholder="Minimo 6 caratteri"
+                />
+              </div>
+
+              <div class="actions">
+                <button id="signInBtn" class="btn btn-primary">
+                  <svg data-lucide="log-in" class="icon"></svg
+                  ><span>Sign In</span>
+                </button>
+                <button id="signUpBtn" type="button" class="btn btn-accent">
+                  <svg data-lucide="user-plus" class="icon"></svg
+                  ><span>Sign Up</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOME VIEW -->
+      <section id="homeView" class="view hidden">
+        <div class="toolbar">
+          <div class="search">
+            <svg data-lucide="search" class="icon"></svg>
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="Cerca nome, corso, città, matricola…"
+            />
+          </div>
+          <button id="newPersonBtn" class="btn btn-accent">
+            <svg data-lucide="id-card" class="icon"></svg
+            ><span>Nuova scheda</span>
+          </button>
+        </div>
+
+        <div id="cardsGrid" class="grid-cards"></div>
+
+        <div id="emptyState" class="empty hidden">
+          <img src="/assets/empty-state-campus.svg" alt="" />
+          <h3>Nessuna scheda</h3>
+          <p>Crea la tua prima scheda anagrafica per iniziare.</p>
+          <button id="emptyNewPerson" class="btn btn-accent">
+            <svg data-lucide="id-card" class="icon"></svg
+            ><span>Crea scheda</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- PERSON VIEW -->
+      <section id="personView" class="view hidden">
+        <div class="mb-8">
+          <button id="backHome" class="btn btn-ghost">
+            <svg data-lucide="arrow-left" class="icon"></svg><span>Home</span>
+          </button>
+        </div>
+
+        <div id="personHeader" class="panel"></div>
+
+        <div class="stack">
+          <div class="filters">
+            <div class="filters__left">
+              <label class="label">Periodo</label>
+              <select id="periodSelect" class="input input-sm">
+                <option value="all">Tutto</option>
+                <option value="month">Ultimo mese</option>
+                <option value="quarter">Ultimi 3 mesi</option>
+                <option value="year">Anno in corso</option>
+                <option value="custom">Personalizzato</option>
+              </select>
+              <input id="dateFrom" type="date" class="input input-sm hidden" />
+              <input id="dateTo" type="date" class="input input-sm hidden" />
+            </div>
+
+            <div class="filters__right">
+              <div class="kpi kpi-inc">
+                <svg data-lucide="trending-up" class="icon"></svg>
+                <div>
+                  <span>Ricavi</span><strong id="sumIncome">€0,00</strong>
+                </div>
+              </div>
+              <div class="kpi kpi-exp">
+                <svg data-lucide="trending-down" class="icon"></svg>
+                <div>
+                  <span>Spese</span><strong id="sumExpense">€0,00</strong>
+                </div>
+              </div>
+              <div class="kpi kpi-bal">
+                <svg data-lucide="banknote" class="icon"></svg>
+                <div>
+                  <span>Bilancio</span><strong id="sumBalance">€0,00</strong>
+                </div>
+              </div>
+
+              <button id="addTxnBtn" class="btn btn-primary">
+                <svg data-lucide="plus" class="icon"></svg
+                ><span>Aggiungi registrazione</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="txnList" class="stack"></div>
+
+          <div id="txnEmpty" class="empty hidden">
+            <img src="/assets/empty-state-campus.svg" alt="" />
+            <h3>Nessuna registrazione</h3>
+            <p>Aggiungi la prima registrazione di spesa o ricavo.</p>
+            <button id="quickAddTxn" class="btn btn-primary">
+              <svg data-lucide="plus" class="icon"></svg
+              ><span>Nuova registrazione</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- MODAL: PERSONA -->
+    <dialog id="personModal" class="modal">
+      <form method="dialog" id="personForm" class="modal__card">
+        <div class="modal__header">
+          <div class="modal__title">
+            <svg data-lucide="id-card" class="icon"></svg>
+            <h3>Nuova scheda anagrafica</h3>
+          </div>
+          <button type="button" class="btn btn-ghost" value="close">
+            <svg data-lucide="x" class="icon"></svg>
+          </button>
+        </div>
+
+        <div class="modal__body grid-2">
+          <div>
+            <label class="label">Nome</label
+            ><input
+              name="first_name"
+              required
+              placeholder="Azzurra"
+              class="input"
+            />
+          </div>
+          <div>
+            <label class="label">Cognome</label
+            ><input name="last_name" required placeholder="C." class="input" />
+          </div>
+          <div>
+            <label class="label">Data di nascita</label
+            ><input name="birth_date" type="date" class="input" />
+          </div>
+          <div>
+            <label class="label">Università</label
+            ><input name="university" placeholder="UNIPI" class="input" />
+          </div>
+          <div>
+            <label class="label">Città</label
+            ><input name="city" placeholder="Pisa" class="input" />
+          </div>
+          <div>
+            <label class="label">Corso di Laurea</label
+            ><input
+              name="degree_course"
+              placeholder="Ingegneria Biomedica - L8"
+              class="input"
+            />
+          </div>
+          <div>
+            <label class="label">Tipo corso</label>
+            <select name="course_type" class="input">
+              <option>Triennale</option>
+              <option>Magistrale</option>
+              <option>Ciclo Unico</option>
+              <option>Master</option>
+              <option>Altro</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">Matricola</label
+            ><input name="matricola" placeholder="111" class="input" />
+          </div>
+          <div>
+            <label class="label">Data immatricolazione</label
+            ><input name="enrollment_date" type="date" class="input" />
+          </div>
+
+          <div>
+            <label for="button-3 label" style="font-size:12px; color:var(--muted);">Fuori Corso</label>
+            <div class="toggle-button-cover">
+                    <div id="button-3" class="button r">
+                      <input class="checkbox" type="checkbox">
+                      <div class="knobs"></div>
+                      <div class="layer"></div>
+                    </div>
+                  </div>
+          </div>
+
+          <!-- <div class="check-line">
+            <input type="checkbox" name="fuori_corso" class="check" /><label
+              >Fuori corso</label
+            >
+          </div> -->
+          
+        </div>
+
+        <div class="modal__footer">
+          <button type="button" class="btn btn-ghost" value="close">Annulla</button>
+          <button id="savePersonBtn" value="confirm" class="btn btn-accent">
+            <svg data-lucide="save" class="icon"></svg><span>Salva</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- MODAL: TRANSAZIONE -->
+    <dialog id="txnModal" class="modal">
+      <form method="dialog" id="txnForm" class="modal__card">
+        <div class="modal__header">
+          <div class="modal__title">
+            <svg data-lucide="receipt" class="icon"></svg>
+            <h3>Nuova registrazione</h3>
+          </div>
+          <button type="button" class="btn btn-ghost" value="close">
+            <svg data-lucide="x" class="icon"></svg>
+          </button>
+        </div>
+        <div class="modal__body grid-2">
+          <div>
+            <label class="label">Tipo</label>
+            <select id="txnKind" name="kind" class="input">
+              <option value="expense">Spesa</option>
+              <option value="income">Ricavo</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">Categoria</label
+            ><select id="txnCategory" name="category_id" class="input"></select>
+          </div>
+          <div>
+            <label class="label">Importo (€)</label
+            ><input
+              name="amount"
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              class="input"
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label class="label">Data</label
+            ><input name="date" type="date" required class="input" />
+          </div>
+          <div class="col-span-2">
+            <label class="label">Note</label
+            ><input name="note" class="input" placeholder="Facoltativo" />
+          </div>
+        </div>
+        <div class="modal__footer">
+          <button type="button" class="btn btn-ghost" value="close">Annulla</button>
+          <!--button id="saveTxnBtn" value="confirm" class="btn btn-primary">
+            <svg data-lucide="plus" class="icon"></svg><span>Aggiungi</span>
+        </button-->
+
+          <button id="saveTxnBtn" value="confirm" class="btn btn-accent">
+            <svg data-lucide="save" class="icon"></svg><span>Salva</span>
+          </button>
+          
+        </div>
+      </form>
+    </dialog>
+
+    <!-- MODAL: PROFILO -->
+    <dialog id="profileModal" class="modal">
+      <form method="dialog" id="profileForm" class="modal__card">
+        <div class="modal__header">
+          <div class="modal__title">
+            <svg data-lucide="user-circle" class="icon"></svg>
+            <h3>Profilo Utente</h3>
+          </div>
+          <button type="button" class="btn btn-ghost" value="close">
+            <svg data-lucide="x" class="icon"></svg>
+          </button>
+        </div>
+
+        <div class="modal__body">
+          <!-- Sezione Informazioni Personali -->
+          <div class="profile-section">
+            <h4 class="section-title">
+              <svg data-lucide="user" class="icon"></svg>
+              Informazioni Personali
+            </h4>
+            <div class="grid-2">
+              <div class="col-span-2">
+                <label class="label">Email</label>
+                <input
+                  name="email"
+                  type="email"
+                  readonly
+                  class="input input-readonly"
+                  placeholder="email@esempio.com"
+                />
+              </div>
+              <div>
+                <label class="label">Nome visualizzazione</label>
+                <input
+                  name="display_name"
+                  placeholder="Il tuo nome"
+                  class="input"
+                />
+              </div>
+              <div>
+                <label class="label">Data registrazione</label>
+                <input
+                  name="created_at"
+                  type="text"
+                  readonly
+                  class="input input-readonly"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Sezione Gestione Password -->
+          <div class="profile-section">
+            <h4 class="section-title">
+              <svg data-lucide="key" class="icon"></svg>
+              Gestione Password
+            </h4>
+            <div class="grid-2">
+              <div class="col-span-2">
+                <label class="label">Password attuale</label>
+                <input
+                  name="current_password"
+                  type="password"
+                  placeholder="Inserisci la password attuale"
+                  class="input"
+                />
+              </div>
+              <div>
+                <label class="label">Nuova password</label>
+                <input
+                  name="new_password"
+                  type="password"
+                  minlength="6"
+                  placeholder="Minimo 6 caratteri"
+                  class="input"
+                />
+              </div>
+              <div>
+                <label class="label">Conferma nuova password</label>
+                <input
+                  name="confirm_password"
+                  type="password"
+                  minlength="6"
+                  placeholder="Ripeti la nuova password"
+                  class="input"
+                />
+              </div>
+              <div class="col-span-2">
+                <button type="button" id="changePasswordBtn" class="btn btn-accent">
+                  <svg data-lucide="shield-check" class="icon"></svg>
+                  <span>Cambia Password</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sezione Recupero Password -->
+          <div class="profile-section">
+            <h4 class="section-title">
+              <svg data-lucide="mail" class="icon"></svg>
+              Recupero Password
+            </h4>
+            <div class="grid-2">
+              <div class="col-span-2">
+                <p class="help-text">
+                  Se hai dimenticato la password, puoi richiedere un link di reset via email.
+                </p>
+                <button type="button" id="resetPasswordBtn" class="btn btn-secondary">
+                  <svg data-lucide="send" class="icon"></svg>
+                  <span>Invia Email di Recupero</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal__footer">
+          <button type="button" class="btn btn-ghost" value="close">
+            <span>Annulla</span>
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <svg data-lucide="save" class="icon"></svg>
+            <span>Salva Profilo</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- TOAST -->
+    <div id="toast" class="toast"></div>
+
+    <script type="module" src="/app.js?v=2025-09-10-02"></script>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="128" fill="#0b0b0f"></rect>
+  <path d="M128 140h256v232c0 35.3-28.7 64-64 64H192c-35.3 0-64-28.7-64-64V140z" fill="#111318" stroke="#FACC15" stroke-width="10"></path>
+  <path d="M196 180h120c22.1 0 40 17.9 40 40v104c0 44.2-35.8 80-80 80h-40c-44.2 0-80-35.8-80-80V220c0-22.1 17.9-40 40-40z" fill="#FACC15" fill-opacity=".12" stroke="#FACC15" stroke-width="8"></path>
+  <text x="50%" y="56%" text-anchor="middle" font-size="160" font-family="Inter, Arial, sans-serif" font-weight="800" fill="#FACC15">U</text>
+</svg>
