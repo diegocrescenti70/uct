@@ -356,10 +356,14 @@ body {
 /* ====== MODALS ====== */
 .modal::backdrop{ background:rgba(0,0,0,.6); backdrop-filter: blur(3px) }
 .modal{ border:none; padding:0; background:transparent }
-.modal__card{ width:min(760px,92vw); border-radius:18px; border:1px solid rgba(255,255,255,.12); background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); box-shadow:var(--shadow) }
+.modal__card{ width:min(760px,92vw); max-height:85vh; border-radius:18px; border:1px solid rgba(255,255,255,.12); background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); box-shadow:var(--shadow); display:flex; flex-direction:column; }
 .modal__header{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08); background:linear-gradient(180deg, rgba(245,197,24,.10), transparent) }
 .modal__title{ display:flex; align-items:center; gap:8px; color:var(--text); color:var(--gold) }
-.modal__body{ padding:12px 14px }
+.modal__body{ padding:12px 14px; overflow-y:auto; flex:1; scrollbar-width:thin; scrollbar-color:var(--gold) transparent; }
+.modal__body::-webkit-scrollbar{ width:4px; }
+.modal__body::-webkit-scrollbar-track{ background:transparent; }
+.modal__body::-webkit-scrollbar-thumb{ background:var(--gold); border-radius:2px; }
+.modal__body::-webkit-scrollbar-thumb:hover{ background:var(--text); }
 .modal__footer{ display:flex; justify-content:flex-end; gap:8px; padding:12px 14px; border-top:1px solid rgba(255,255,255,.08) }
 .grid-2{ display:grid; gap:10px }
 .grid-2 .col-span-2{ grid-column:1/-1 }

@@ -92,7 +92,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     CURRENT_PROFILE = await loadUserProfile();
   }
   
-  bindAuthUI();
+  await bindAuthUI();
 
   supabase.auth.onAuthStateChange(async (_ev, s) => {
     CURRENT_USER = s?.user || null;
@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       CURRENT_PROFILE = null;
     }
     
-    bindAuthUI();
+    await bindAuthUI();
   });
 
   // UI handlers
@@ -206,7 +206,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     switch(action) {
       case "profile":
-        openProfileModal();
+        await openProfileModal();
         break;
       case "dashboard":
         toast("Funzione Dashboard in arrivo!");
@@ -268,7 +268,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     switch(action) {
       case "profile":
-        openProfileModal();
+        await openProfileModal();
         break;
       case "dashboard":
         toast("Funzione Dashboard in arrivo!");
@@ -334,7 +334,7 @@ async function handleAuthHashCallback() {
   }
 }
 
-function bindAuthUI() {
+async function bindAuthUI() {
   if (!CURRENT_USER) {
     showView("auth");
     userMenu?.classList.add("hidden");
@@ -343,7 +343,7 @@ function bindAuthUI() {
     userMenu?.classList.remove("hidden");
     
     // Aggiorna l'interfaccia avatar utilizzando il profilo
-    updateAvatarUI();
+    await updateAvatarUI();
     updateNicknameInDropdown();
     
     ensureDefaultCategories().then(() => {
@@ -1025,7 +1025,7 @@ txnForm?.addEventListener("submit", async (e) => {
 });
 
 // --- Profile Modal ---
-function openProfileModal() {
+async function openProfileModal() {
   profileForm.reset();
   
   if (!CURRENT_USER) {
@@ -1046,7 +1046,7 @@ function openProfileModal() {
   }
   
   // Carica l'avatar preview se presente
-  updateAvatarPreview();
+  await updateAvatarPreview();
   
   // Resetta i campi password
   const currentPasswordInput = profileForm.querySelector('[name="current_password"]');
@@ -1276,7 +1276,8 @@ async function uploadAvatar(file) {
     .from("avatars")
     .upload(filePath, resizedFile, {
       cacheControl: "3600",
-      upsert: true
+      upsert: true,
+      contentType: "image/png"
     });
     
   if (error) {
@@ -1284,12 +1285,17 @@ async function uploadAvatar(file) {
     throw error;
   }
   
-  // Ottieni l'URL pubblico dell'avatar
-  const { data: urlData } = supabase.storage
+  // Genera signed URL per bucket privato (validità: 1 ora)
+  const { data: signedUrlData, error: urlError } = await supabase.storage
     .from("avatars")
-    .getPublicUrl(filePath);
+    .createSignedUrl(filePath, 3600);
     
-  return urlData.publicUrl;
+  if (urlError) {
+    console.error("Error creating signed URL:", urlError);
+    throw urlError;
+  }
+  
+  return signedUrlData.signedUrl;
 }
 
 async function resizeImage(file, maxWidth, maxHeight) {
@@ -1334,19 +1340,38 @@ async function resizeImage(file, maxWidth, maxHeight) {
   });
 }
 
-function updateAvatarUI() {
+async function updateAvatarUI() {
   const avatar = qs("#userAvatarBtn");
   const initials = qs("#userAvatarInitials");
   
   if (!avatar || !initials) return;
   
   if (CURRENT_PROFILE?.avatar_url) {
-    // Mostra l'immagine avatar
-    initials.style.display = "none";
-    avatar.style.backgroundImage = `url(${CURRENT_PROFILE.avatar_url}?v=${Date.now()})`;
-    avatar.style.backgroundSize = "cover";
-    avatar.style.backgroundPosition = "center";
-    avatar.style.backgroundRepeat = "no-repeat";
+    try {
+      // Genera nuovo signed URL per l'avatar
+      const avatarPath = `${CURRENT_USER.id}/avatar.png`;
+      const { data: signedUrlData, error } = await supabase.storage
+        .from("avatars")
+        .createSignedUrl(avatarPath, 3600);
+      
+      if (!error && signedUrlData?.signedUrl) {
+        // Mostra l'immagine avatar con signed URL
+        initials.style.display = "none";
+        avatar.style.backgroundImage = `url(${signedUrlData.signedUrl})`;
+        avatar.style.backgroundSize = "cover";
+        avatar.style.backgroundPosition = "center";
+        avatar.style.backgroundRepeat = "no-repeat";
+      } else {
+        // Fallback alle iniziali se signed URL fallisce
+        throw new Error("Signed URL failed");
+      }
+    } catch (error) {
+      // Mostra le iniziali come fallback
+      initials.style.display = "block";
+      avatar.style.backgroundImage = "none";
+      const displayName = CURRENT_PROFILE?.display_name || CURRENT_USER?.email || "User";
+      initials.textContent = getInitialsFromDisplayName(displayName);
+    }
   } else {
     // Mostra le iniziali
     initials.style.display = "block";
@@ -1400,15 +1425,33 @@ function updateNicknameInDropdown() {
 }
 
 // === AVATAR MANAGEMENT ===
-function updateAvatarPreview() {
+async function updateAvatarPreview() {
   const avatarPreview = qs("#avatarPreview");
   const avatarPreviewContent = qs("#avatarPreviewContent");
   
   if (!avatarPreview || !avatarPreviewContent) return;
   
   if (CURRENT_PROFILE?.avatar_url) {
-    // Mostra l'immagine avatar
-    avatarPreviewContent.innerHTML = `<img src="${CURRENT_PROFILE.avatar_url}?v=${Date.now()}" alt="Avatar" />`;
+    try {
+      // Genera nuovo signed URL per l'anteprima avatar
+      const avatarPath = `${CURRENT_USER.id}/avatar.png`;
+      const { data: signedUrlData, error } = await supabase.storage
+        .from("avatars")
+        .createSignedUrl(avatarPath, 3600);
+      
+      if (!error && signedUrlData?.signedUrl) {
+        // Mostra l'immagine avatar
+        avatarPreviewContent.innerHTML = `<img src="${signedUrlData.signedUrl}" alt="Avatar" />`;
+      } else {
+        throw new Error("Signed URL failed");
+      }
+    } catch (error) {
+      // Mostra placeholder come fallback
+      avatarPreviewContent.innerHTML = `
+        <svg data-lucide="user" class="icon-large"></svg>
+        <span class="preview-text">Nessun avatar</span>
+      `;
+    }
   } else {
     // Mostra placeholder
     avatarPreviewContent.innerHTML = `
@@ -1570,8 +1613,8 @@ async function acceptCrop() {
       
       if (updatedProfile) {
         CURRENT_PROFILE = updatedProfile;
-        updateAvatarUI();
-        updateAvatarPreview();
+        await updateAvatarUI();
+        await updateAvatarPreview();
         toast("Avatar aggiornato con successo!");
       }
     }
@@ -1582,11 +1625,11 @@ async function acceptCrop() {
   } catch (error) {
     console.error("Errore upload avatar:", error);
     toast("Errore durante l'upload dell'avatar");
-    cancelCrop();
+    await cancelCrop();
   }
 }
 
-function cancelCrop() {
+async function cancelCrop() {
   const uploadArea = qs("#avatarUploadArea");
   const cropSection = qs("#avatarCropSection");
   const fileInput = qs("#avatarFileInput");
@@ -1601,7 +1644,7 @@ function cancelCrop() {
   }
   
   // Ripristina l'anteprima originale
-  updateAvatarPreview();
+  await updateAvatarPreview();
 }
 
 async function removeAvatar() {
@@ -1613,8 +1656,8 @@ async function removeAvatar() {
     
     if (updatedProfile) {
       CURRENT_PROFILE = updatedProfile;
-      updateAvatarUI();
-      updateAvatarPreview();
+      await updateAvatarUI();
+      await updateAvatarPreview();
       toast("Avatar rimosso con successo!");
     }
     
